@@ -4,8 +4,9 @@ import { listPredictions } from "@/lib/prediction-service";
 
 export async function GET(
   request: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
+  const { id: matchId } = await context.params;
   const { searchParams } = new URL(request.url);
   const scope = searchParams.get("scope") || "all";
   const requestedLimit = Number(searchParams.get("limit") || "50");
@@ -18,7 +19,7 @@ export async function GET(
     }
 
     const predictions = await listPredictions({
-      matchId: context.params.id,
+      matchId,
       userId: session.user.id,
     });
 
@@ -26,8 +27,21 @@ export async function GET(
   }
 
   const predictions = await listPredictions({
-    matchId: context.params.id,
+    matchId,
   });
 
-  return NextResponse.json(predictions.slice(0, limit));
+  const publicPredictions = predictions.map((prediction) => {
+    const { user, ...rest } = prediction;
+    return {
+      ...rest,
+      user: user
+        ? {
+            id: user.id,
+            name: user.name ?? "Аноним",
+          }
+        : null,
+    };
+  });
+
+  return NextResponse.json(publicPredictions.slice(0, limit));
 }

@@ -91,6 +91,42 @@ export async function getMatchEvents(matchId: string, query: { take?: number } =
   });
 }
 
+function parseIntervalSeconds(metadata?: string | null): number | null {
+  if (!metadata) {
+    return null;
+  }
+
+  try {
+    const payload = JSON.parse(metadata) as { intervalSeconds?: unknown };
+    if (typeof payload?.intervalSeconds === "number" && Number.isFinite(payload.intervalSeconds)) {
+      return payload.intervalSeconds;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
+function isWithinIntervalPredictionWindow(
+  predictionType: PredictionType,
+  predictionMetadata: string | null,
+  predictedAt: Date,
+  eventTimestamp: Date
+) {
+  if (predictionType !== "INTERVAL") {
+    return true;
+  }
+
+  const intervalSeconds = parseIntervalSeconds(predictionMetadata);
+  if (!intervalSeconds || intervalSeconds <= 0) {
+    return true;
+  }
+
+  const deltaMs = eventTimestamp.getTime() - predictedAt.getTime();
+  return deltaMs >= 0 && deltaMs <= intervalSeconds * 1000;
+}
+
 export async function createMatch(input: unknown) {
   const parsed = createMatchSchema.safeParse(input);
 
@@ -225,13 +261,19 @@ export async function createPrediction(userId: string, input: unknown) {
   }
 
   const result = await prisma.$transaction(async (tx) => {
+    const metadata = type === "INTERVAL" && intervalSeconds
+      ? JSON.stringify({ intervalSeconds })
+      : undefined;
+    const predictedAt = new Date();
+
     const prediction = await tx.prediction.create({
       data: {
         matchId,
         userId,
         type: type as PredictionType,
         targetEvent,
-        predictedAt: new Date(),
+        predictedAt,
+        metadata,
       },
     });
 
@@ -239,11 +281,21 @@ export async function createPrediction(userId: string, input: unknown) {
       where: {
         matchId,
         ...(targetEvent ? { type: targetEvent } : {}),
+        timestamp: {
+          gte: predictedAt,
+        },
       },
-      orderBy: { timestamp: "desc" },
+      orderBy: { timestamp: "asc" },
     });
 
-    if (!matchedEvent) {
+    const canScoreByInterval = isWithinIntervalPredictionWindow(
+      prediction.type,
+      prediction.metadata,
+      prediction.predictedAt,
+      matchedEvent?.timestamp ?? new Date()
+    );
+
+    if (!matchedEvent || !canScoreByInterval) {
       emitMatchRoomEvent(matchId, "match:update", {
         type: "prediction:created",
         predictionId: prediction.id,
@@ -377,6 +429,14 @@ export async function createEventAndScore(input: unknown) {
     const payload = pendingPredictions
       .filter((prediction) =>
         prediction.targetEvent ? prediction.targetEvent === type : true
+      )
+      .filter((prediction) =>
+        isWithinIntervalPredictionWindow(
+          prediction.type as PredictionType,
+          prediction.metadata,
+          prediction.predictedAt,
+          event.timestamp
+        )
       )
       .map((prediction) => {
         const { points, accuracyMs } = calculateEventScore(

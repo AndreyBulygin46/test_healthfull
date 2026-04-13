@@ -12,6 +12,9 @@
     "test:integration": "node scripts/run-integration-tests.js",
     "test:smoke": "node scripts/run-integration-tests.js src/__tests__/integration/smoke-flow.test.ts --runInBand",
     "test:e2e": "playwright test",
+    "e2e:prepare": "node scripts/e2e-prepare.js",
+    "test:e2e:smoke": "npm run e2e:prepare && playwright test tests/e2e/smoke.spec.ts",
+    "test:e2e:full": "npm run e2e:prepare && playwright test tests/e2e",
     "test:watch": "jest --watch",
     "seed": "node scripts/run-seed.js"
   },

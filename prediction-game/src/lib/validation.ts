@@ -58,6 +58,25 @@ export const createPredictionSchema = z.object({
   type: z.nativeEnum(PredictionType),
   targetEvent: z.string().optional(),
   intervalSeconds: z.number().int().min(1).max(120).optional(),
+}).superRefine((value, ctx) => {
+  if (value.type === PredictionType.INTERVAL) {
+    if (value.intervalSeconds === undefined) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Для INTERVAL необходимо указать окно в секундах",
+        path: ["intervalSeconds"],
+      });
+      return;
+    }
+
+    if (!value.targetEvent) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Для INTERVAL необходимо указать целевое событие",
+        path: ["targetEvent"],
+      });
+    }
+  }
 });
 
 // Event schemas

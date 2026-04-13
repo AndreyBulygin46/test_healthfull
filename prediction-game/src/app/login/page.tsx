@@ -13,12 +13,13 @@ function getSafeCallbackUrl(callbackUrl?: string) {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams?: { error?: string; callbackUrl?: string; message?: string };
+  searchParams?: Promise<{ error?: string; callbackUrl?: string; message?: string }>;
 }) {
   const session = await auth();
-  const callbackUrl = getSafeCallbackUrl(searchParams?.callbackUrl);
-  const error = searchParams?.error;
-  const message = searchParams?.message;
+  const resolvedSearchParams = await searchParams;
+  const callbackUrl = getSafeCallbackUrl(resolvedSearchParams?.callbackUrl);
+  const error = resolvedSearchParams?.error;
+  const message = resolvedSearchParams?.message;
 
   if (session) {
     redirect(callbackUrl);

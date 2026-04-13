@@ -11,7 +11,7 @@ import { INTEGRATION_MODE } from "@/lib/integrations/match-feed";
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams?: { message?: string; error?: string };
+  searchParams?: Promise<{ message?: string; error?: string }>;
 }) {
   const session = await auth();
 
@@ -40,8 +40,9 @@ export default async function AdminPage({
     select: { id: true, name: true, email: true, role: true },
     orderBy: { createdAt: "desc" },
   });
-  const message = searchParams?.message ? decodeURIComponent(searchParams.message) : null;
-  const error = searchParams?.error ? decodeURIComponent(searchParams.error) : null;
+  const resolvedSearchParams = await searchParams;
+  const message = resolvedSearchParams?.message ? decodeURIComponent(resolvedSearchParams.message) : null;
+  const error = resolvedSearchParams?.error ? decodeURIComponent(resolvedSearchParams.error) : null;
 
   const createMatchAction = async (formData: FormData) => {
     "use server";

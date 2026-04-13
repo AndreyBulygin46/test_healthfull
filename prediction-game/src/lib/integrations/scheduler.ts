@@ -122,7 +122,7 @@ async function updateExistingMatch(
   if (!match) return null;
 
   if (match.status === MatchStatus.CANCELLED) {
-    return { id: match.id, created: false };
+    return null;
   }
 
   const updated = await prisma.match.update({

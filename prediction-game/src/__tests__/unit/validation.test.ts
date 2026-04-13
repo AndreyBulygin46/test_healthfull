@@ -241,9 +241,37 @@ describe("createPredictionSchema", () => {
     const result = createPredictionSchema.safeParse({
       matchId: "cuid-match-1",
       type: "INTERVAL",
+      targetEvent: "kill",
+      intervalSeconds: 10,
     });
 
     expect(result.success).toBe(true);
+  });
+
+  it("отклоняет INTERVAL без intervalSeconds", () => {
+    const result = createPredictionSchema.safeParse({
+      matchId: "cuid-match-1",
+      type: "INTERVAL",
+      targetEvent: "kill",
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0]?.message).toBe("Для INTERVAL необходимо указать окно в секундах");
+    }
+  });
+
+  it("отклоняет INTERVAL без целевого события", () => {
+    const result = createPredictionSchema.safeParse({
+      matchId: "cuid-match-1",
+      type: "INTERVAL",
+      intervalSeconds: 10,
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0]?.message).toBe("Для INTERVAL необходимо указать целевое событие");
+    }
   });
 
   it("отклоняет невалидный UUID", () => {

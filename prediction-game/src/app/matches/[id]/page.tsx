@@ -4,19 +4,21 @@ import { getMatchById } from "@/lib/prediction-service";
 import { MatchClientPage } from "./match-page-client";
 
 type MatchPageProps = {
-  params: { id: string };
-  searchParams?: { message?: string };
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<{ message?: string }>;
 };
 
 export default async function MatchPage({ params, searchParams }: MatchPageProps) {
-  const match = await getMatchById(params.id);
+  const { id } = await params;
+  const match = await getMatchById(id);
   const session = await auth();
 
   if (!match) {
     notFound();
   }
 
-  const message = searchParams?.message ? decodeURIComponent(searchParams.message) : null;
+  const resolvedSearchParams = await searchParams;
+  const message = resolvedSearchParams?.message ? decodeURIComponent(resolvedSearchParams.message) : null;
 
   const serializableMatch = {
     id: match.id,

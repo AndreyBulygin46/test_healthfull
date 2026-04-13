@@ -4,9 +4,10 @@ import { LeaderboardClient } from "./leaderboard-client";
 export default async function LeaderboardPage({
   searchParams,
 }: {
-  searchParams?: { matchId?: string };
+  searchParams?: Promise<{ matchId?: string }>;
 }) {
-  const matchId = searchParams?.matchId || undefined;
+  const resolvedSearchParams = await searchParams;
+  const matchId = resolvedSearchParams?.matchId || undefined;
   const leaderboard = await getLeaderboard(matchId, 50);
 
   return (

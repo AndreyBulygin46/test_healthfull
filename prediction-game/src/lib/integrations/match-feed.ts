@@ -1,4 +1,5 @@
 import { MatchStatus, SportType } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 
 export type FeedSource = "pandascore" | "api-football";
 
@@ -213,12 +214,67 @@ export async function fetchFeedData(source: FeedSource): Promise<FeedResult> {
 
 export async function syncFromSource(source: FeedSource): Promise<SyncSummary> {
   const payload = await fetchFeedData(source);
+  let created = 0;
+  let updated = 0;
+  let skipped = 0;
+  let skippedEvents = 0;
+
+  const matchIndex = new Map<string, string>();
+
+  for (const normalized of payload.matches) {
+    const existing = await prisma.match.findUnique({
+      where: { externalId: normalized.externalId },
+      select: { id: true, status: true },
+    });
+    if (!existing) {
+      created += 1;
+      continue;
+    }
+
+    if (existing.status === MatchStatus.CANCELLED) {
+      skipped += 1;
+      continue;
+    }
+
+    matchIndex.set(normalized.externalId, existing.id);
+    updated += 1;
+  }
+
+  for (const event of payload.events) {
+    const localMatchId = matchIndex.get(event.matchExternalId);
+    if (!localMatchId) {
+      continue;
+    }
+
+    const eventTimestamp = new Date(event.timestamp);
+    if (Number.isNaN(eventTimestamp.getTime())) {
+      skippedEvents += 1;
+      continue;
+    }
+
+    const alreadyExists = await prisma.event.findFirst({
+      where: {
+        matchId: localMatchId,
+        type: event.type,
+        timestamp: eventTimestamp,
+        description: event.description ?? null,
+        player: event.player ?? null,
+        team: event.team ?? null,
+      },
+      select: { id: true },
+    });
+    if (alreadyExists) {
+      skippedEvents += 1;
+    }
+  }
+
   return {
     source,
     matches: payload.matches.length,
     events: payload.events.length,
-    created: 0,
-    updated: 0,
-    skipped: 0,
+    created,
+    updated,
+    skipped,
+    skippedEvents,
   };
 }

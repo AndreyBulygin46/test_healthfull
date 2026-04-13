@@ -52,12 +52,13 @@ const sportTypeLabels: Record<SportType | "ALL", string> = {
 };
 
 interface MatchesPageProps {
-  searchParams?: { sport?: string };
+  searchParams?: Promise<{ sport?: string }>;
 }
 
 export default async function MatchesPage({ searchParams }: MatchesPageProps) {
   const session = await auth();
-  const selectedSport = searchParams?.sport as SportType | "ALL" | undefined;
+  const resolvedSearchParams = await searchParams;
+  const selectedSport = resolvedSearchParams?.sport as SportType | "ALL" | undefined;
   
   // Filter by sport type if selected
   const sportFilter = selectedSport && selectedSport !== "ALL" 

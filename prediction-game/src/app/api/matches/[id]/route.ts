@@ -4,9 +4,10 @@ import { deleteMatch, getMatchById, updateMatch } from "@/lib/prediction-service
 
 export async function GET(
   _request: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const match = await getMatchById(context.params.id);
+  const { id } = await context.params;
+  const match = await getMatchById(id);
 
   if (!match) {
     return NextResponse.json({ error: "Матч не найден" }, { status: 404 });
@@ -15,8 +16,9 @@ export async function GET(
   return NextResponse.json(match);
 }
 
-export async function PATCH(request: NextRequest, context: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await context.params;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Требуется авторизация" }, { status: 401 });
@@ -27,7 +29,7 @@ export async function PATCH(request: NextRequest, context: { params: { id: strin
     }
 
     const body = await request.json();
-    const updated = await updateMatch(context.params.id, body);
+    const updated = await updateMatch(id, body);
 
     return NextResponse.json(updated);
   } catch (error) {
@@ -38,8 +40,9 @@ export async function PATCH(request: NextRequest, context: { params: { id: strin
   }
 }
 
-export async function DELETE(_request: NextRequest, context: { params: { id: string } }) {
+export async function DELETE(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await context.params;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Требуется авторизация" }, { status: 401 });
@@ -49,7 +52,7 @@ export async function DELETE(_request: NextRequest, context: { params: { id: str
       return NextResponse.json({ error: "Недостаточно прав" }, { status: 403 });
     }
 
-    await deleteMatch(context.params.id);
+    await deleteMatch(id);
     return NextResponse.json({ ok: true });
   } catch (error) {
     return NextResponse.json(

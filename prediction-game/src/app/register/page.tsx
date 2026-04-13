@@ -15,12 +15,13 @@ function getSafeCallbackUrl(callbackUrl?: string) {
 export default async function RegisterPage({
   searchParams,
 }: {
-  searchParams?: { error?: string; message?: string; callbackUrl?: string };
+  searchParams?: Promise<{ error?: string; message?: string; callbackUrl?: string }>;
 }) {
   const session = await auth();
-  const callbackUrl = getSafeCallbackUrl(searchParams?.callbackUrl);
-  const error = searchParams?.error;
-  const message = searchParams?.message;
+  const resolvedSearchParams = await searchParams;
+  const callbackUrl = getSafeCallbackUrl(resolvedSearchParams?.callbackUrl);
+  const error = resolvedSearchParams?.error;
+  const message = resolvedSearchParams?.message;
 
   if (session) {
     redirect(callbackUrl);

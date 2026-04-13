@@ -136,6 +136,108 @@ describe("Match lifecycle integration", () => {
     expect(scores).toHaveLength(1);
   });
 
+  it("инстантное предсказание не матчится с уже прошедшим событием", async () => {
+    const match = await createMatch({
+      title: "Past Event Match",
+      sportType: SportType.CS2,
+      streamUrl: "https://youtube.com/watch?v=past-event",
+      startTime: new Date().toISOString(),
+      externalId: "ext-past-event",
+    });
+
+    await prisma.match.update({
+      where: { id: match.id },
+      data: { status: MatchStatus.LIVE },
+    });
+
+    await prisma.event.create({
+      data: {
+        matchId: match.id,
+        type: "kill",
+        timestamp: new Date(Date.now() - 60_000),
+        description: "Прошедшее событие",
+      },
+    });
+
+    const predictionResult = await createPrediction(userId, {
+      matchId: match.id,
+      type: PredictionType.INSTANT,
+    });
+    expect(predictionResult.points).toBeNull();
+    expect(predictionResult.matchedEvent).toBeNull();
+
+    await createEventAndScore({
+      matchId: match.id,
+      type: "kill",
+      timestamp: new Date(Date.now() + 10_000).toISOString(),
+      description: "Ближайшее будущее событие",
+    });
+
+    const futureScore = await prisma.score.findFirst({
+      where: { predictionId: predictionResult.prediction.id },
+    });
+    expect(futureScore).toBeTruthy();
+  });
+
+  it("учитывает временное окно для INTERVAL предсказания", async () => {
+    const match = await createMatch({
+      title: "Interval Match",
+      sportType: SportType.CS2,
+      streamUrl: "https://youtube.com/watch?v=interval",
+      startTime: new Date().toISOString(),
+      externalId: "ext-interval",
+    });
+
+    await prisma.match.update({
+      where: { id: match.id },
+      data: { status: MatchStatus.LIVE },
+    });
+
+    const outOfWindowPrediction = await createPrediction(userId, {
+      matchId: match.id,
+      type: PredictionType.INTERVAL,
+      targetEvent: "kill",
+      intervalSeconds: 10,
+    });
+    await prisma.prediction.update({
+      where: { id: outOfWindowPrediction.prediction.id },
+      data: { predictedAt: new Date(Date.now() - 15000) },
+    });
+
+    await createEventAndScore({
+      matchId: match.id,
+      type: "kill",
+      description: "Событие вне окна",
+    });
+
+    const outOfWindowScore = await prisma.score.findFirst({
+      where: { predictionId: outOfWindowPrediction.prediction.id },
+    });
+    expect(outOfWindowScore).toBeNull();
+
+    const inWindowPrediction = await createPrediction(userId, {
+      matchId: match.id,
+      type: PredictionType.INTERVAL,
+      targetEvent: "kill",
+      intervalSeconds: 10,
+    });
+    await prisma.prediction.update({
+      where: { id: inWindowPrediction.prediction.id },
+      data: { predictedAt: new Date(Date.now() - 5000) },
+    });
+
+    await createEventAndScore({
+      matchId: match.id,
+      type: "kill",
+      description: "Событие в окне",
+    });
+
+    const inWindowScore = await prisma.score.findFirst({
+      where: { predictionId: inWindowPrediction.prediction.id },
+    });
+    expect(inWindowScore).toBeTruthy();
+  });
+
   it("разделяет общий и персональный списки прогнозов по matchId и userId", async () => {
     const match = await createMatch({
       title: "Prediction Feed Match",

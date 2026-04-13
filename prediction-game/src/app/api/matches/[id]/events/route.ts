@@ -4,9 +4,10 @@ import { getMatchById, getMatchEvents } from "@/lib/prediction-service";
 
 export async function GET(
   request: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const match = await getMatchById(context.params.id);
+  const { id } = await context.params;
+  const match = await getMatchById(id);
   if (!match) {
     return NextResponse.json({ error: "Матч не найден" }, { status: 404 });
   }
