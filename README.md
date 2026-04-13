@@ -1,178 +1,74 @@
-# LivePredict - Игра на предсказание событий
+# test_healthfull
 
-Веб-платформа для интерактивных предсказаний событий во время live-трансляций киберспорта и спорта.
+Репозиторий с веб-приложением **LivePredict** — платформа для прогнозов событий во время live-трансляций (киберспорт и спорт).
 
-## 🎮 Особенности
+Основной код приложения находится в каталоге [`prediction-game/`](prediction-game/).
 
-- **Real-time предсказания**: Нажимайте кнопку в момент события
-- **Множество дисциплин**: CS2, Dota 2, Valorant, футбол  
-- **Турнирные таблицы**: Соревнуйтесь с другими игроками
-- **Live трансляции**: Встроенные видео-плееры
-- **Админ-панель**: Управление матчами и событиями
+## LivePredict в двух словах
 
-## 🚀 Технологии
+- Регистрация и вход (NextAuth, credentials + JWT-сессии).
+- Список матчей с фильтром по дисциплине, карточка матча с режимами прогноза `INSTANT` / `INTERVAL` и кнопкой «СЕЙЧАС».
+- События матча, расчёт очков по точности времени, лидерборд (общий и с учётом матча).
+- Админ-панель на `/admin`: матчи, события, роли пользователей, синхронизация интеграций (в типичной конфигурации — mock-first, без обязательных внешних API).
+- Real-time: Socket.io с fallback на polling при недоступности сокета.
 
-- **Next.js 14** + **TypeScript**
-- **Prisma** + **SQLite**
-- **NextAuth.js** - Аутентификация
-- **Socket.io** - Real-time коммуникация
-- **Tailwind CSS** - Стилизация
-- **PandaScore API** - Киберспортивные данные
+## Стек (актуально для `prediction-game`)
 
-## ⚡ Быстрый старт
+| Область | Технологии |
+|--------|------------|
+| Фреймворк | Next.js (App Router), React, TypeScript |
+| Данные | Prisma, SQLite (локально), `better-sqlite3` |
+| Auth | NextAuth.js (credentials), `@auth/prisma-adapter` |
+| UI | Tailwind CSS |
+| Realtime | Socket.io |
+| Тесты | Jest (unit + integration), Playwright (E2E) |
+
+Точные версии зависимости смотрите в [`prediction-game/package.json`](prediction-game/package.json).
+
+## Быстрый старт (разработка)
 
 ```bash
-# Установка зависимостей
 cd prediction-game
 npm install
+```
 
-# Настройка переменных окружения
-cp .env.example .env.local
+Создайте файл окружения, например `prediction-game/.env.local`, минимум:
 
-# Инициализация базы данных  
-npx prisma migrate dev
-npx prisma generate
+```env
+DATABASE_URL="file:./prisma/dev.db"
+NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_SECRET="замените-на-случайную-строку"
+```
 
-# Запуск
+Инициализация схемы и демо-данные:
+
+```bash
+npx prisma db push
+npm run seed
 npm run dev
 ```
 
-Откройте http://localhost:3000
+Откройте в браузере: [http://localhost:3000](http://localhost:3000).
 
-## 🔐 Тестовые данные
+Учётные записи после `npm run seed` (см. [`prisma/seed.js`](prediction-game/prisma/seed.js)):
 
-- **Админ**: `admin@example.com` / пароль: `admin123`
-- **Демо-матч**: CS2 - "NAVI vs FaZe" (создается автоматически)
+| Роль | Email | Пароль |
+|------|--------|--------|
+| Администратор | `admin@example.com` | `admin123456` |
+| Игрок | `player@example.com` | `player123456` |
 
-## 📖 Документация
+Сборка production:
 
-- [Инструкция по тестированию](./TESTING.md)
-- [API Documentation](./docs/api.md)
-
-## 🎯 Основной функционал
-
-### Для пользователей
-
-1. **Регистрация/Вход** - Email и пароль
-2. **Просмотр матчей** - Список активных трансляций
-3. **Игровой процесс** - Кнопка "ПРЕДСКАЗАТЬ СЕЙЧАС!" с cooldown 5 сек
-4. **Система очков**:
-   - ±0-2 сек: 100 очков
-   - ±2-5 сек: 80 очков
-   - ±5-10 сек: 50 очков
-   - ±10-20 сек: 20 очков
-5. **Лидерборд** - Глобальный и по матчам
-
-### Для администраторов
-
-- Создание/редактирование матчей
-- Ручное добавление событий
-- Загрузка матчей из PandaScore API
-- Управление пользователями
-
-## 📊 Структура базы данных
-
-### Таблицы
-
-- **User** - Пользователи (id, email, name, role)
-- **Match** - Матчи (id, title, sportType, status, streamUrl)
-- **Event** - События матча (id, matchId, type, timestamp)
-- **Prediction** - Предсказания (id, userId, matchId, predictedAt)
-- **Score** - Очки (id, predictionId, points, accuracyMs)
-- **LeaderboardEntry** - Записи лидерборда
-
-## 🔌 API Endpoints
-
-### Аутентификация
-- `POST /api/auth/signin` - Вход
-- `POST /api/auth/signout` - Выход
-
-### Матчи
-- `GET /api/matches` - Список
-- `GET /api/matches/:id` - Детали
-- `POST /api/matches` - Создать (admin)
-
-### Предсказания
-- `POST /api/predictions` - Создать
-- `GET /api/predictions` - История
-
-### Лидерборд
-- `GET /api/leaderboard` - Глобальный
-- `GET /api/leaderboard/:matchId` - По матчу
-
-### WebSocket Events
-
-**Клиент -> Сервер:**
-- `match:join` - Присоединиться к матчу
-- `prediction:make` - Сделать предсказание
-
-**Сервер -> Клиент:**
-- `event:occurred` - Новое событие
-- `prediction:result` - Результат предсказания
-- `leaderboard:update` - Обновление таблицы
-
-## 🏗️ Структура проекта
-
-```
-src/
-├── app/                  # Next.js App Router
-│   ├── (auth)/          # Аутентификация
-│   ├── matches/         # Матчи
-│   ├── leaderboard/     # Турнирная таблица
-│   ├── profile/         # Профиль
-│   ├── admin/           # Админ-панель
-│   └── api/             # API routes
-├── components/          # React компоненты
-├── lib/                # Утилиты
-│   ├── auth.ts         # NextAuth config
-│   ├── prisma.ts       # Prisma client
-│   └── socket.ts       # Socket.io
-└── server/             # Серверный код
-    └── socket/         # Socket handlers
+```bash
+cd prediction-game
+npm run build
+npm run start
 ```
 
-## 🧪 Тестирование
+## Документация
 
-См. [TESTING.md](./TESTING.md) для подробной инструкции.
+| Файл | Содержание |
+|------|------------|
+| [Docs/TESTING.md](Docs/TESTING.md) | Что и как тестировать: команды, E2E, ручные сценарии |
+| [prediction-game/README.md](prediction-game/README.md) | Детали MVP, API, страницы, логика очков |
 
-Быстрый тест:
-1. Зарегистрируйтесь на `/register`
-2. Войдите на `/login`
-3. Перейдите к матчу на `/matches`
-4. Нажмите "ПРЕДСКАЗАТЬ СЕЙЧАС!"
-5. Проверьте лидерборд на `/leaderboard`
-
-## 🚀 Деплой
-
-### Vercel (рекомендуется)
-
-1. Подключите GitHub репозиторий
-2. Настройте переменные окружения в dashboard
-3. Деплой автоматический при push в main
-
-### Переменные окружения для Production
-
-```env
-DATABASE_URL="postgresql://..."
-NEXTAUTH_URL="https://your-domain.com"
-NEXTAUTH_SECRET="secure-random-string"
-PANDASCORE_API_KEY="your-api-key"
-REDIS_URL="redis://..."
-```
-
-## 📄 Лицензия
-
-MIT License
-
-## 🤝 Вклад в проект
-
-1. Fork репозитория
-2. Создайте feature branch: `git checkout -b feature/amazing-feature`
-3. Commit: `git commit -m 'Add amazing feature'`
-4. Push: `git push origin feature/amazing-feature`
-5. Откройте Pull Request
-
-## 📞 Контакты
-
-- Email: support@livepredict.example
-- GitHub Issues: [Создать issue](https://github.com/yourusername/prediction-game/issues)
