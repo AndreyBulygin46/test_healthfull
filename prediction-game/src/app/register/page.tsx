@@ -4,11 +4,26 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 
-export default async function RegisterPage() {
+function getSafeCallbackUrl(callbackUrl?: string) {
+  if (!callbackUrl || !callbackUrl.startsWith("/")) {
+    return "/matches";
+  }
+
+  return callbackUrl;
+}
+
+export default async function RegisterPage({
+  searchParams,
+}: {
+  searchParams?: { error?: string; message?: string; callbackUrl?: string };
+}) {
   const session = await auth();
+  const callbackUrl = getSafeCallbackUrl(searchParams?.callbackUrl);
+  const error = searchParams?.error;
+  const message = searchParams?.message;
 
   if (session) {
-    redirect("/matches");
+    redirect(callbackUrl);
   }
 
   return (
@@ -18,6 +33,16 @@ export default async function RegisterPage() {
         <p className="text-slate-400 mb-6 text-center">
           Создайте аккаунт LivePredict
         </p>
+        {message ? (
+          <p className="mb-4 text-sm bg-emerald-900/50 border border-emerald-700 rounded-lg p-3 text-emerald-200">
+            {message}
+          </p>
+        ) : null}
+        {error ? (
+          <p className="mb-4 text-sm bg-red-900/50 border border-red-700 rounded-lg p-3 text-red-200">
+            {error}
+          </p>
+        ) : null}
 
         <form
           action={async (formData) => {
@@ -25,20 +50,40 @@ export default async function RegisterPage() {
             const name = formData.get("name") as string;
             const email = formData.get("email") as string;
             const password = formData.get("password") as string;
+            const targetCallback = getSafeCallbackUrl(formData.get("callbackUrl")?.toString());
 
-            // Check if user exists
+            if (!name || !email || !password) {
+              redirect(
+                `/register?${new URLSearchParams({
+                  error: "Заполните все поля",
+                  callbackUrl: targetCallback,
+                }).toString()}`
+              );
+            }
+            if (password.length < 6) {
+              redirect(
+                `/register?${new URLSearchParams({
+                  error: "Пароль должен содержать минимум 6 символов",
+                  callbackUrl: targetCallback,
+                }).toString()}`
+              );
+            }
+
             const existingUser = await prisma.user.findUnique({
               where: { email },
             });
 
             if (existingUser) {
-              throw new Error("User already exists");
+              redirect(
+                `/register?${new URLSearchParams({
+                  error: "Пользователь с таким email уже существует",
+                  callbackUrl: targetCallback,
+                }).toString()}`
+              );
             }
 
-            // Hash password
             const hashedPassword = await bcrypt.hash(password, 12);
 
-            // Create user
             await prisma.user.create({
               data: {
                 name,
@@ -47,10 +92,16 @@ export default async function RegisterPage() {
               },
             });
 
-            redirect("/login");
+            redirect(
+              `/login?${new URLSearchParams({
+                message: "Аккаунт создан. Войдите, чтобы продолжить.",
+                callbackUrl: targetCallback,
+              }).toString()}`
+            );
           }}
           className="space-y-4"
         >
+          <input type="hidden" name="callbackUrl" value={callbackUrl} />
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1">
               Имя
@@ -101,7 +152,10 @@ export default async function RegisterPage() {
 
         <p className="mt-6 text-center text-slate-400">
           Уже есть аккаунт?{" "}
-          <Link href="/login" className="text-cyan-400 hover:text-cyan-300">
+          <Link
+            href={`/login?callbackUrl=${encodeURIComponent(callbackUrl)}`}
+            className="text-cyan-400 hover:text-cyan-300"
+          >
             Войти
           </Link>
         </p>

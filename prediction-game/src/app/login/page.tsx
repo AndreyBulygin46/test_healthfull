@@ -1,15 +1,27 @@
-import { auth } from "@/lib/auth";
+import { auth, signIn } from "@/lib/auth";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { signIn } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import bcrypt from "bcryptjs";
 
-export default async function LoginPage() {
+function getSafeCallbackUrl(callbackUrl?: string) {
+  if (!callbackUrl || !callbackUrl.startsWith("/")) {
+    return "/matches";
+  }
+
+  return callbackUrl;
+}
+
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams?: { error?: string; callbackUrl?: string; message?: string };
+}) {
   const session = await auth();
-  
+  const callbackUrl = getSafeCallbackUrl(searchParams?.callbackUrl);
+  const error = searchParams?.error;
+  const message = searchParams?.message;
+
   if (session) {
-    redirect("/matches");
+    redirect(callbackUrl);
   }
 
   return (
@@ -19,21 +31,45 @@ export default async function LoginPage() {
         <p className="text-slate-400 mb-6 text-center">
           Войдите в свой аккаунт LivePredict
         </p>
+        {message ? (
+          <p className="mb-4 text-sm bg-emerald-900/50 border border-emerald-700 rounded-lg p-3 text-emerald-200">
+            {message}
+          </p>
+        ) : null}
+        {error ? (
+          <p className="mb-4 text-sm bg-red-900/50 border border-red-700 rounded-lg p-3 text-red-200">
+            {error === "CredentialsSignin"
+              ? "Неверный email или пароль"
+              : "Не удалось войти. Проверьте данные и попробуйте еще раз."}
+          </p>
+        ) : null}
 
         <form
           action={async (formData) => {
             "use server";
             const email = formData.get("email") as string;
             const password = formData.get("password") as string;
-            
-            await signIn("credentials", {
-              email,
-              password,
-              redirectTo: "/matches",
-            });
+            const formCallback = formData.get("callbackUrl")?.toString();
+            const redirectTo = getSafeCallbackUrl(formCallback);
+
+            try {
+              await signIn("credentials", {
+                email,
+                password,
+                redirectTo,
+              });
+            } catch {
+              redirect(
+                `/login?${new URLSearchParams({
+                  error: "CredentialsSignin",
+                  callbackUrl: redirectTo,
+                }).toString()}`
+              );
+            }
           }}
           className="space-y-4"
         >
+          <input type="hidden" name="callbackUrl" value={callbackUrl} />
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1">
               Email
@@ -70,7 +106,10 @@ export default async function LoginPage() {
 
         <p className="mt-6 text-center text-slate-400">
           Нет аккаунта?{" "}
-          <Link href="/register" className="text-cyan-400 hover:text-cyan-300">
+          <Link
+            href={`/register?callbackUrl=${encodeURIComponent(callbackUrl)}`}
+            className="text-cyan-400 hover:text-cyan-300"
+          >
             Зарегистрироваться
           </Link>
         </p>

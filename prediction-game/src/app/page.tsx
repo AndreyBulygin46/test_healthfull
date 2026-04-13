@@ -1,8 +1,11 @@
 import { auth } from "@/lib/auth";
 import Link from "next/link";
+import { MatchStatus } from "@prisma/client";
+import { getMatchList } from "@/lib/prediction-service";
 
 export default async function Home() {
   const session = await auth();
+  const liveMatches = await getMatchList({ status: MatchStatus.LIVE, take: 3 });
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 text-white">
@@ -69,10 +72,10 @@ export default async function Home() {
         {/* Features */}
         <div className="grid md:grid-cols-3 gap-8 mb-16">
           <div className="bg-slate-800 p-8 rounded-2xl border border-slate-700">
-            <div className="text-4xl mb-4">🎮</div>
-            <h3 className="text-xl font-bold mb-2">CS2, Dota 2 и другие</h3>
+            <div className="text-4xl mb-4">🎮⚽</div>
+            <h3 className="text-xl font-bold mb-2">CS2, Футбол, Dota 2</h3>
             <p className="text-slate-400">
-              Угадывай фраги, раунды и ключевые моменты в популярных дисциплинах
+              Угадывай фраги, голы, раунды и ключевые моменты в популярных дисциплинах
             </p>
           </div>
           <div className="bg-slate-800 p-8 rounded-2xl border border-slate-700">
@@ -102,9 +105,30 @@ export default async function Home() {
               Все матчи →
             </Link>
           </div>
-          <div className="text-slate-400 text-center py-8">
-            Загрузка матчей... (скоро будут отображаться)
-          </div>
+          {liveMatches.length === 0 ? (
+            <div className="text-slate-400 text-center py-8">
+              Нет активных матчей. Зайдите позже.
+            </div>
+          ) : (
+            <ul className="space-y-3">
+              {liveMatches.map((match) => (
+                <li
+                  key={match.id}
+                  className="flex justify-between items-center border-b border-slate-700 pb-3"
+                >
+                  <span>
+                    {match.title} — {match.sportType}
+                  </span>
+                  <Link
+                    href={`/matches/${match.id}`}
+                    className="text-cyan-400 hover:text-cyan-300"
+                  >
+                    Сыграть
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
     </div>
