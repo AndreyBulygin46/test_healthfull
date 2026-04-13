@@ -425,6 +425,13 @@ export function MatchClientPage({ match, sessionUser, initialMessage }: MatchCli
 
         <section className="bg-slate-800 border border-slate-700 rounded-xl p-4 space-y-4">
           <h2 className="text-xl font-semibold">Отправить предсказание</h2>
+          <p className="text-xs text-slate-400 leading-relaxed -mt-1">
+            Для киберспорта и др. (не футбол) очки зависят от разницы времени между нажатием и моментом
+            события: до 2 с — 100 XP, до 20 с — ещё есть очки,{" "}
+            <strong className="text-slate-300">свыше 20 с — 0 XP («Мимо»)</strong>. Сначала нажмите
+            «СЕЙЧАС», затем пусть админ добавит событие с тем же типом, что в поле цели (или без цели —
+            подойдёт следующее событие). Регистр в названии типа не важен.
+          </p>
           {sessionUser ? (
             <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
               <div className="space-y-2">

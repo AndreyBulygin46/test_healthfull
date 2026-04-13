@@ -16,6 +16,14 @@ import {
   emitUserResult,
 } from "@/lib/realtime/socket";
 
+/** Совпадение цели прогноза и типа события без учёта регистра и пробелов. */
+export function targetEventMatches(target: string | null | undefined, eventType: string): boolean {
+  if (target == null || String(target).trim() === "") {
+    return true;
+  }
+  return String(target).trim().toLowerCase() === String(eventType).trim().toLowerCase();
+}
+
 type MatchFilters = {
   status?: MatchStatus | string;
   sportType?: string;
@@ -277,16 +285,15 @@ export async function createPrediction(userId: string, input: unknown) {
       },
     });
 
-    const matchedEvent = await tx.event.findFirst({
+    const eventsAfterPrediction = await tx.event.findMany({
       where: {
         matchId,
-        ...(targetEvent ? { type: targetEvent } : {}),
-        timestamp: {
-          gte: predictedAt,
-        },
+        timestamp: { gte: predictedAt },
       },
       orderBy: { timestamp: "asc" },
     });
+    const matchedEvent =
+      eventsAfterPrediction.find((e) => targetEventMatches(targetEvent ?? null, e.type)) ?? null;
 
     const canScoreByInterval = isWithinIntervalPredictionWindow(
       prediction.type,
@@ -418,7 +425,6 @@ export async function createEventAndScore(input: unknown) {
       where: {
         matchId,
         score: null,
-        OR: [{ targetEvent: null }, { targetEvent: type }],
       },
     });
 
@@ -427,9 +433,7 @@ export async function createEventAndScore(input: unknown) {
     }
 
     const payload = pendingPredictions
-      .filter((prediction) =>
-        prediction.targetEvent ? prediction.targetEvent === type : true
-      )
+      .filter((prediction) => targetEventMatches(prediction.targetEvent, type))
       .filter((prediction) =>
         isWithinIntervalPredictionWindow(
           prediction.type as PredictionType,
