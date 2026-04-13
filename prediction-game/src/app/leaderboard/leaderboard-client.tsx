@@ -5,6 +5,8 @@ import { useEffect, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
 import { io } from "socket.io-client";
 
+import { defaultSocketClientOptions } from "@/lib/realtime/socket-client";
+
 type Row = {
   rank: number;
   userId: string;
@@ -88,11 +90,7 @@ export function LeaderboardClient({
     };
 
     const connectSocket = () => {
-      const socket = io({
-        path: "/api/socket/socket.io",
-        transports: ["websocket", "polling"],
-        autoConnect: false,
-      });
+      const socket = io(defaultSocketClientOptions);
       socketRef.current = socket;
 
       socket.on("connect", () => {

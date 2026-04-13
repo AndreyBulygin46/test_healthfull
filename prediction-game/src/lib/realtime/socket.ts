@@ -71,10 +71,22 @@ class SocketBus implements RealtimeBus {
   }
 
   getStatus(): SocketEventStatus {
+    const roomKeys = this.io.sockets.adapter.rooms.keys();
+    const rooms: string[] = [];
+    let index = 0;
+    const maxRooms = 200;
+    for (const key of roomKeys) {
+      rooms.push(key);
+      index += 1;
+      if (index >= maxRooms) {
+        break;
+      }
+    }
+
     return {
       ready: true,
       activeConnections: this.io.engine?.clientsCount ?? 0,
-      rooms: Array.from(this.io.sockets.adapter.rooms.keys()),
+      rooms,
       fallbackMode: "socketio",
     };
   }

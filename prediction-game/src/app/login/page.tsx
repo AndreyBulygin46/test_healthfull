@@ -1,4 +1,5 @@
-import { auth, signIn } from "@/lib/auth";
+import { auth } from "@/lib/auth";
+import { LoginForm } from "@/components/auth/login-form";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -32,86 +33,22 @@ export default async function LoginPage({
         <p className="text-slate-400 mb-6 text-center">
           Войдите в свой аккаунт LivePredict
         </p>
-        {message ? (
-          <p className="mb-4 text-sm bg-emerald-900/50 border border-emerald-700 rounded-lg p-3 text-emerald-200">
-            {message}
-          </p>
-        ) : null}
-        {error ? (
+
+        {error && error !== "CredentialsSignin" ? (
           <p className="mb-4 text-sm bg-red-900/50 border border-red-700 rounded-lg p-3 text-red-200">
-            {error === "CredentialsSignin"
-              ? "Неверный email или пароль"
-              : "Не удалось войти. Проверьте данные и попробуйте еще раз."}
+            Не удалось войти. Проверьте данные и попробуйте еще раз.
           </p>
         ) : null}
 
-        <form
-          action={async (formData) => {
-            "use server";
-            const email = formData.get("email") as string;
-            const password = formData.get("password") as string;
-            const formCallback = formData.get("callbackUrl")?.toString();
-            const redirectTo = getSafeCallbackUrl(formCallback);
+        <LoginForm
+          callbackUrl={callbackUrl}
+          serverError={error}
+          message={message}
+        />
 
-            try {
-              await signIn("credentials", {
-                email,
-                password,
-                redirectTo,
-              });
-            } catch {
-              redirect(
-                `/login?${new URLSearchParams({
-                  error: "CredentialsSignin",
-                  callbackUrl: redirectTo,
-                }).toString()}`
-              );
-            }
-          }}
-          className="space-y-4"
-        >
-          <input type="hidden" name="callbackUrl" value={callbackUrl} />
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">
-              Email
-            </label>
-            <input
-              type="email"
-              name="email"
-              required
-              className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-              placeholder="you@example.com"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">
-              Пароль
-            </label>
-            <input
-              type="password"
-              name="password"
-              required
-              className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-              placeholder="••••••••"
-            />
-          </div>
-
-          <button
-            type="submit"
-            className="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-3 rounded-lg transition"
-          >
-            Войти
-          </button>
-        </form>
-
-        <p className="mt-6 text-center text-slate-400">
-          Нет аккаунта?{" "}
-          <Link
-            href={`/register?callbackUrl=${encodeURIComponent(callbackUrl)}`}
-            className="text-cyan-400 hover:text-cyan-300"
-          >
-            Зарегистрироваться
+        <p className="mt-4 text-center text-sm text-slate-500">
+          <Link href="/" className="text-slate-400 hover:text-slate-300">
+            На главную
           </Link>
         </p>
       </div>

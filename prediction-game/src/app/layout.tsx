@@ -1,18 +1,9 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import "./globals.css";
-import { auth, signOut } from "@/lib/auth";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+import { auth } from "@/lib/auth";
+import { AuthProvider } from "@/components/auth/providers";
+import { LogoutButton } from "@/components/auth/logout-button";
 
 export const metadata: Metadata = {
   title: "LivePredict",
@@ -26,17 +17,10 @@ export default async function RootLayout({
 }>) {
   const session = await auth();
 
-  const logoutAction = async () => {
-    "use server";
-    await signOut({ redirectTo: "/login" });
-  };
-
   return (
-    <html
-      lang="ru"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
+    <html lang="ru" className="h-full antialiased">
       <body className="min-h-full flex flex-col bg-slate-900 text-white">
+        <AuthProvider>
         <header className="border-b border-slate-800 bg-slate-950">
           <div className="container mx-auto px-4 py-3 flex justify-between items-center gap-4">
             <Link href="/" className="font-semibold text-cyan-300">
@@ -59,9 +43,7 @@ export default async function RootLayout({
                       Админка
                     </Link>
                   ) : null}
-                  <form action={logoutAction}>
-                    <button className="text-slate-300 hover:text-white">Выйти</button>
-                  </form>
+                  <LogoutButton />
                 </>
               ) : (
                 <>
@@ -77,6 +59,7 @@ export default async function RootLayout({
           </div>
         </header>
         {children}
+        </AuthProvider>
       </body>
     </html>
   );

@@ -8,6 +8,7 @@ import { io } from "socket.io-client";
 
 import { getScoreTierName } from "@/lib/scoring";
 import { formatTimeDifference } from "@/lib/scoring";
+import { defaultSocketClientOptions } from "@/lib/realtime/socket-client";
 
 type PredictionType = "INSTANT" | "INTERVAL";
 
@@ -248,11 +249,7 @@ export function MatchClientPage({ match, sessionUser, initialMessage }: MatchCli
       pollingInterval = null;
     };
 
-    const socket: Socket = io({
-      path: "/api/socket/socket.io",
-      transports: ["websocket", "polling"],
-      autoConnect: false,
-    });
+    const socket: Socket = io(defaultSocketClientOptions);
     socketRef.current = socket;
 
     socket.on("connect", () => {

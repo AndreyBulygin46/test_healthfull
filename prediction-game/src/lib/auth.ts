@@ -70,5 +70,10 @@ const authOptions = {
   },
 };
 
-export const { handlers, signIn, signOut } = NextAuth(authOptions);
+/** NextAuth v4: один обработчик на GET/POST для App Router (не объект { handlers, signIn }). */
+const handler = NextAuth(authOptions);
+export const GET = handler;
+export const POST = handler;
+
 export const auth = () => getServerSession(authOptions);
+export { authOptions };

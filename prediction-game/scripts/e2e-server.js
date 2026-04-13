@@ -39,7 +39,7 @@ const env = {
 const nextBin = require.resolve("next/dist/bin/next");
 const child = spawn(
   process.execPath,
-  [nextBin, "dev", "-H", "127.0.0.1", "-p", "3000"],
+  [nextBin, "dev", "--webpack", "-H", "127.0.0.1", "-p", "3000"],
   {
     cwd: baseDir,
     env,

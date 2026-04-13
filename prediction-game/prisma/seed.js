@@ -23,19 +23,19 @@ async function main() {
     },
   });
 
-  const existingUser = await prisma.user.findUnique({
+  const playerPassword = await hash("player123456", 10);
+  await prisma.user.upsert({
     where: { email: "player@example.com" },
+    update: {
+      name: "Player",
+      password: playerPassword,
+    },
+    create: {
+      email: "player@example.com",
+      name: "Player",
+      password: playerPassword,
+    },
   });
-  if (!existingUser) {
-    const playerPassword = await hash("player123456", 10);
-    await prisma.user.create({
-      data: {
-        email: "player@example.com",
-        name: "Player",
-        password: playerPassword,
-      },
-    });
-  }
 
   const liveMatch = await prisma.match.upsert({
     where: { externalId: "seed-live-match" },
